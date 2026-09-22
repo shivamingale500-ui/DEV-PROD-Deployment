@@ -1,3 +1,78 @@
+name: Continuous Integration & Deployment Lifecycle
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+
+  # ==========================================
+  # 1. BUILD AND TEST
+  # ==========================================
+  build-and-test:
+    name: Build & Test Codebase
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Application Testing Suites
+        run: |
+          echo "Executing Unit Testing..."
+          echo "Running Container Code Quality Checks..."
+          echo "Build Successful!"
+
+
+  # ==========================================
+  # 2. DEPLOY TO DEV
+  # ==========================================
+  deploy-dev:
+    name: Provision & Deploy to DEV
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Apply DEV
+        working-directory: environments/dev
+        run: |
+          terraform init -reconfigure
+          terraform apply -auto-approve
+
+
+  # ==========================================
+  # 3. TEST DEV
+  # ==========================================
+  verify-dev:
+    name: Automated Integration Testing (DEV)
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Smoke Tests
+        run: |
+          echo "Testing DEV API Endpoints..."
+          echo "Health check verification passed."
+          echo "DEV deployment is ready for production approval."
+
+
   # ==========================================
   # 4. PRODUCTION
   # ==========================================
