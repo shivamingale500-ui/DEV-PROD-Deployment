@@ -10,6 +10,9 @@ permissions:
 
 jobs:
 
+  # ==========================================
+  # 1. BUILD AND TEST
+  # ==========================================
   build-and-test:
     name: Build & Test Codebase
     runs-on: ubuntu-latest
@@ -25,6 +28,9 @@ jobs:
           echo "Build Successful!"
 
 
+  # ==========================================
+  # 2. DEPLOY TO DEV
+  # ==========================================
   deploy-dev:
     name: Provision & Deploy to DEV
     needs: build-and-test
@@ -45,12 +51,15 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Apply DEV
+        working-directory: environments/dev
         run: |
-          cd environments/dev
           terraform init -reconfigure
           terraform apply -auto-approve
 
 
+  # ==========================================
+  # 3. TEST DEV
+  # ==========================================
   verify-dev:
     name: Automated Integration Testing (DEV)
     needs: deploy-dev
@@ -60,9 +69,13 @@ jobs:
       - name: Smoke Tests
         run: |
           echo "Testing DEV API Endpoints..."
-          echo "Health check verification passed. Ready for approval review."
+          echo "Health check verification passed."
+          echo "DEV deployment is ready for production approval."
 
 
+  # ==========================================
+  # 4. PRODUCTION
+  # ==========================================
   deploy-production:
     name: Provision & Deploy to PRODUCTION
     needs: verify-dev
@@ -85,12 +98,18 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Verify PRODUCTION State
+        working-directory: environments/prod
         run: |
-          cd environments/prod
           terraform init -reconfigure
 
-          echo "===== TERRAFORM STATE ====="
+          echo "======================================"
+          echo "TERRAFORM STATE"
+          echo "======================================"
+
           terraform state list
 
-          echo "===== TERRAFORM PLAN ====="
+          echo "======================================"
+          echo "TERRAFORM PLAN"
+          echo "======================================"
+
           terraform plan
