@@ -1,69 +1,3 @@
-name: Continuous Integration & Deployment Lifecycle
-
-on:
-  push:
-    branches:
-      - main
-
-permissions:
-  id-token: write
-  contents: read
-
-jobs:
-
-  build-and-test:
-    name: Build & Test Codebase
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Run Application Testing Suites
-        run: |
-          echo "Executing Unit Testing..."
-          echo "Running Container Code Quality Checks..."
-          echo "Build Successful!"
-
-
-  deploy-dev:
-    name: Provision & Deploy to DEV
-    needs: build-and-test
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Apply DEV
-        run: |
-          cd environments/dev
-          terraform init
-          terraform apply -auto-approve
-
-
-  verify-dev:
-    name: Automated Integration Testing (DEV)
-    needs: deploy-dev
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Smoke Tests
-        run: |
-          echo "Testing DEV API Endpoints..."
-          echo "Health check verification passed. Ready for approval review."
-
-
   deploy-production:
     name: Provision & Deploy to PRODUCTION
     needs: verify-dev
@@ -85,8 +19,13 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Apply PRODUCTION
+      - name: Terraform Verify PRODUCTION State
         run: |
           cd environments/prod
-          terraform init
-          terraform apply -auto-approve
+          terraform init -reconfigure
+
+          echo "===== TERRAFORM STATE ====="
+          terraform state list
+
+          echo "===== TERRAFORM PLAN ====="
+          terraform plan
